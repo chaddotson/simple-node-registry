@@ -1,4 +1,3 @@
-
 from __future__ import print_function
 from argparse import ArgumentParser
 from hashlib import sha1 as sha
@@ -51,11 +50,11 @@ class PackageSpec(object):
         if self.is_scoped:
             # scoped
             if at_count > 1:
-                # scoped with version specified
+                # version specified
                 self.scoped_package_name, self.package_version = self.package_spec.rsplit('@', 1)
                 self.scope, self.package_name = self.scoped_package_name[1:].rsplit('/')
             else:
-                # scoped with no version specified
+                # version not specified
                 self.scoped_package_name = self.package_spec
         else:
             # not scoped
@@ -100,25 +99,29 @@ def download_package(output_directory, spec, duplicate_download_preventer, force
 
     info = get_package_info(pkg_spec.registry_package_name)
 
+    # if no version was specified, use the latest specified.
     latest = str(info['dist-tags']['latest'])
     if pkg_spec.package_version is None:
         pkg_spec.package_version = latest
 
+    # the python node-semver package doesn't work well with unicode, convert arguments to strings.
     pkg_spec.package_version = max_satisfying([str(v) for v in info['versions'].keys()], str(pkg_spec.package_version))
 
     if pkg_spec.registry_package_name in duplicate_download_preventer and pkg_spec.package_version in duplicate_download_preventer[pkg_spec.registry_package_name]:
         logger.info('Previously downloaded package: %s, version %s', pkg_spec.registry_package_name, pkg_spec.package_version)
         return
     
+    # get information about the version the user wanted.
     version_info = info['versions'][pkg_spec.package_version]
 
     tarball_url = version_info['dist']['tarball']
     expected_shasum = version_info['dist']['shasum']
 
+
+    # derive paths for storing the cached json info document and the tarball. Scoped packages are special.
     if pkg_spec.is_scoped:
         info_path = join(output_directory, 'scoped', pkg_spec.scope, pkg_spec.package_name) + '.json'
         tgz_directory = join(output_directory, 'scoped', pkg_spec.scope, 'tgz')
-        
     else:
         info_path = join(output_directory, pkg_spec.package_name) + '.json'
         tgz_directory = join(output_directory, 'tgz')
@@ -131,11 +134,14 @@ def download_package(output_directory, spec, duplicate_download_preventer, force
     except oserror:
         logger.exception("Error creating output directory.")
 
-    file_shasum = get_file_hash(tgz_path) if exists(tgz_path) else None
 
     with open(info_path, 'w') as f:
         dump(info, f, indent=4)
 
+    
+    file_shasum = get_file_hash(tgz_path) if exists(tgz_path) else None
+    
+    # if the tarball exists and has a valid checksum, don't download a new copy.
     if (exists(tgz_path) and not force) and (file_shasum == expected_shasum):
         logger.info('Locally cached package: %s version: %s (latest: %s) at: %s', pkg_spec.registry_package_name, pkg_spec.package_version, latest, tarball_url)
     else:
@@ -150,11 +156,12 @@ def download_package(output_directory, spec, duplicate_download_preventer, force
         if not file_shasum == expected_shasum:
             logger.warning('''Package %s from %s downloaded by hash: %s doesn't match expected hash: %s''', pkg_spec.registry_package_name, tarball_url, file_shasum, expected_shasum)
     
+    # to prevent circular dependency problems, track downloaded packages/versions.
     if pkg_spec.registry_package_name not in duplicate_download_preventer:
         duplicate_download_preventer[pkg_spec.registry_package_name] = set()
-
     duplicate_download_preventer[pkg_spec.registry_package_name].add(pkg_spec.package_version)    
 
+    # cache all package dependencies and optoinal dependencies.
     logger.info('Processing dependencies: %s', pkg_spec.registry_package_name)
     for dependency, version in version_info.get('dependencies', {}).items():
         download_package(output_directory, dependency + '@' + version, duplicate_download_preventer, force)
@@ -183,6 +190,8 @@ if __name__ == '__main__':
     if args.verbose:
         getLogger('').setLevel(DEBUG)
 
+    # simple method for preventing circular dependencies.  I don't know if that is
+    # possible but I seem to have hit something like it.
     duplicate_download_preventer = dict()
 
     # if -p is specified, that means that instead of a list of packages via the command line,

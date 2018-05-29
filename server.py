@@ -1,5 +1,5 @@
 from __future__ import print_function
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from json import load
 from logging.config import dictConfig
 from os.path import join
@@ -69,3 +69,15 @@ def get_scoped_package_tgz(scope, package, tarball):
     path_to_tarballs = join('./npm', 'scoped', scope,  'tgz')
 
     return send_from_directory(path_to_tarballs, tarball)
+
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    shutdown_server()
+    return 'Server shutting down...'
