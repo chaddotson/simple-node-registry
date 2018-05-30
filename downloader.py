@@ -6,7 +6,7 @@ from logging import basicConfig, getLogger, DEBUG, INFO
 from os import error as oserror, makedirs
 from os.path import basename, exists, join
 from requests import get
-from semver import max_satisfying
+from semver import max_satisfying, rtr
 from time import sleep
 from urllib import quote
 from urllib2 import urlopen
@@ -16,7 +16,7 @@ logger = getLogger(__name__)
 
 REPOSITORY_URL = 'https://registry.npmjs.org/'
 BUF_SIZE = 65536
-NICENESS = 0.1
+NICENESS = 0.02
 
 
 PACKAGES_NPM_REQUIRES=[
@@ -24,7 +24,7 @@ PACKAGES_NPM_REQUIRES=[
     'to-fast-properties', 'babel-generator', 'babel-helpers', 'source-map-support', 'regenerator-runtime', 'home-or-tmp',
     'slash', 'invariant', 'babel-core', 'babylon', 'detect-indent', 'convert-source-map', 'esutils', 'core-js', 'jsesc',
     'js-tokens', 'babel-code-frame', 'loose-envify', 'babel-messages', 'ms', 'debug', 'is-finite', 'repeating', 'babel-types',
-    'babel-template']
+    'babel-template', 'npm']
 
 
 class PackageSpec(object):
@@ -101,11 +101,17 @@ def download_package(output_directory, spec, duplicate_download_preventer, force
 
     # if no version was specified, use the latest specified.
     latest = str(info['dist-tags']['latest'])
+    next_version = str(info['dist-tags']['next']) if 'next' in info['dist-tags'] else None
+
     if pkg_spec.package_version is None:
         pkg_spec.package_version = latest
 
     # the python node-semver package doesn't work well with unicode, convert arguments to strings.
-    pkg_spec.package_version = max_satisfying([str(v) for v in info['versions'].keys()], str(pkg_spec.package_version))
+    pkg_versions = [str(v) for v in info['versions'].keys()]
+
+    if next_version and next_version not in pkg_spec.package_version and next_version in pkg_versions:
+        pkg_versions.remove(next_version)
+    pkg_spec.package_version = max_satisfying(pkg_versions, str(pkg_spec.package_version))
 
     if pkg_spec.registry_package_name in duplicate_download_preventer and pkg_spec.package_version in duplicate_download_preventer[pkg_spec.registry_package_name]:
         logger.info('Previously downloaded package: %s, version %s', pkg_spec.registry_package_name, pkg_spec.package_version)
@@ -179,6 +185,7 @@ def get_args():
     parser.add_argument('output_directory', help='Output file')
     parser.add_argument('packages', type=str, nargs='+', help='packages to cache (space seperated)')
     parser.add_argument('-p', '--package', help='packages argument is package.json formatted file.', default=False, action='store_true' )
+    parser.add_argument('-n', '--noextras', help='don\'t include node extras (dependencies automatically gotten by node.', default=False, action='store_true' )
     parser.add_argument('-v', '--verbose', help='Verbose log output', default=False, action='store_true')
 
     return parser.parse_args()
@@ -206,7 +213,9 @@ if __name__ == '__main__':
     else:
         packages = args.packages
 
-    for package in PACKAGES_NPM_REQUIRES + packages:
+
+    for package in packages if args.noextras else PACKAGES_NPM_REQUIRES + packages:
+    #for package in packages:
         download_package(args.output_directory, package, duplicate_download_preventer)
 
     logger.info('Downloaded %d packages total.', sum(len(s) for s in duplicate_download_preventer.values()))
