@@ -16,7 +16,7 @@ logger = getLogger(__name__)
 
 REPOSITORY_URL = 'https://registry.npmjs.org/'
 BUF_SIZE = 65536
-NICENESS = 0.02
+NICENESS = 0.0005
 
 
 PACKAGES_NPM_REQUIRES=[
@@ -109,7 +109,10 @@ def download_package(output_directory, spec, duplicate_download_preventer, force
     # the python node-semver package doesn't work well with unicode, convert arguments to strings.
     pkg_versions = [str(v) for v in info['versions'].keys()]
 
-    if next_version and next_version not in pkg_spec.package_version and next_version in pkg_versions:
+
+    print(type(next_version), type(pkg_spec.package_version))
+
+    if (next_version and not next_version in pkg_spec.package_version) and next_version in pkg_versions:
         pkg_versions.remove(next_version)
     pkg_spec.package_version = max_satisfying(pkg_versions, str(pkg_spec.package_version))
 
@@ -145,10 +148,11 @@ def download_package(output_directory, spec, duplicate_download_preventer, force
         dump(info, f, indent=4)
 
     
-    file_shasum = get_file_hash(tgz_path) if exists(tgz_path) else None
+    # file_shasum = get_file_hash(tgz_path) if exists(tgz_path) else None
     
     # if the tarball exists and has a valid checksum, don't download a new copy.
-    if (exists(tgz_path) and not force) and (file_shasum == expected_shasum):
+    # if (exists(tgz_path) and not force) and (file_shasum == expected_shasum):
+    if exists(tgz_path) and not force:
         logger.info('Locally cached package: %s version: %s (latest: %s) at: %s', pkg_spec.registry_package_name, pkg_spec.package_version, latest, tarball_url)
     else:
         logger.info('Getting package: %s version: %s (latest: %s) at: %s', pkg_spec.registry_package_name, pkg_spec.package_version, latest, tarball_url)
