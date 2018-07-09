@@ -98,63 +98,6 @@ def get_file_hash(path):
 
     return tmphash.hexdigest()
 
-
-# dict
-# - pkg
-# - - info
-# - - versions
-
-
-# class PackageVersionAlreadyRequiredError(RuntimeError):
-#     pass
-
-
-# class Package(object):
-#     def __init__(self, pkg_spec):
-#         self.registry_package_name = pkg_spec.registry_package_name
-#         self.is_scoped = pkg_spec.is_scoped
-#         self.scope = pkg_spec.scope
-#         self.scoped_package_name = pkg_spec.scoped_package_name
-#         self.package_name = pkg_spec.package_name
-#         self.package_version = pkg_spec.package_version
-
-#         self.info = get_package_info(pkg_spec.registry_package_name)
-#         self.required_versions = set()
-
-#     @property
-#     def latest(self):
-#         return str(self.info['dist-tags']['latest']) if self.info is not None else None
-
-#     @property
-#     def next_version(self):
-#         return str(self.info['dist-tags']['next']) if 'next' in self.info['dist-tags'] else None
-
-
-#     def add_required_version(self, pkg_spec):
-#         version_spec = pkg_spec.package_version
-#         logger.info('Initial version spec: %s', version_spec)
-
-#         if version_spec is None:
-#             logger.info("Version not specified, using latest (%s)", self.latest)
-#             version_spec =  self.latest
-
-#         # the python node-semver package doesn't work well with unicode, convert arguments to strings.
-#         pkg_versions = [str(v) for v in  self.info['versions'].keys()]
-#         filtered_pkg_versions = [v for v in pkg_versions if lte(v, self.latest, False)]
-
-#         logger.info('Finding version (%s) up to latest(%s)', version_spec, self.latest)
-
-#         download_version = max_satisfying(filtered_pkg_versions, str(version_spec))
-
-#         if download_version is None:
-#             logger.info('Version (%s) not found up to latest < latest(%s) trying all.', version_spec, self.latest)
-#             download_version = max_satisfying(pkg_versions, str(version_spec))
-        
-#         if download_version in self.required_versions:
-#             raise PackageVersionAlreadyRequiredError()
-        
-#         self.required_versions.add(download_version)
-#         return self.info['versions'][download_version]
         
 
 class PackageVersionAlreadyRequiredError(RuntimeError):
@@ -163,6 +106,7 @@ class PackageVersionAlreadyRequiredError(RuntimeError):
 
 class FailedToDownloadPackageInfoError(RuntimeError):
     pass
+
 
 class Package(object):
     def __init__(self, pkg_name):
@@ -208,7 +152,6 @@ class Package(object):
         return self.info['versions'][download_version]
     
 
-
 def determine_download_version(pkg_spec, package):
     version_spec = pkg_spec.package_version
     logger.info('Initial version spec: %s', version_spec)
@@ -230,7 +173,6 @@ def determine_download_version(pkg_spec, package):
         download_version = max_satisfying(pkg_versions, str(version_spec))
     
     return download_version
-
 
 
 def split_package_spec(spec):
@@ -276,43 +218,6 @@ def crawl_package_info(packages, spec):
     sleep(NICENESS)
 
 
-
-# def crawl_package_info(packages, spec):
-#     """ Download the package specified into the output directory specified. """
-
-#     logger.info('Processing %s', spec)
-
-#     pkg_spec = PackageSpec(spec)
-
-
-
-
-#     if pkg_spec.registry_package_name not in packages:
-#         packages[pkg_spec.registry_package_name] = Package(pkg_spec)
-        
-#     package = packages[pkg_spec.registry_package_name]
-    
-#     try:
-#         version_info = package.add_required_version(pkg_spec)
-        
-#         # cache all package dependencies and optoinal dependencies.
-#         logger.info('Processing dependencies: %s', pkg_spec.registry_package_name)
-#         for dependency, version in version_info.get('dependencies', {}).items():
-#             crawl_package_info(packages, dependency + '@' + version)
-    
-#         logger.info('Processing optional dependencies: %s', pkg_spec.registry_package_name)
-#         for dependency, version in version_info.get('dependencies', {}).items():
-#             crawl_package_info(packages, dependency + '@' + version)
-        
-#     except PackageVersionAlreadyRequiredError:
-#         logger.info('Package version already required - package: %s, version %s', pkg_spec.registry_package_name, pkg_spec)
-#         pass
-
-#     logger.info('Done with package: %s', pkg_spec.registry_package_name)
-#     sleep(NICENESS)
-
-
-
 def download_chromedriver(output_directory):
     logger.info('Downloading chromedriver resources.')
     ns = {'ChromeDriver': 'http://doc.s3.amazonaws.com/2006-03-01'}
@@ -345,7 +250,6 @@ def download_chromedriver(output_directory):
         except oserror:
             pass
             # logger.exception("Error creating output directory for chrome driver version.")
-
 
         if exists(save_path):
             logger.info("Using cached %s at %s", resource_url, save_path)
@@ -406,8 +310,6 @@ def download_node_dependencies(output_directory_base, specified_packages):
 
                 if not file_shasum == expected_shasum:
                     logger.warning('''Package %s from %s downloaded by hash: %s doesn't match expected hash: %s''', package.pkg_name, tarball_url, file_shasum, expected_shasum)
-
-
 
 
 def download_package(output_directory, spec, duplicate_download_preventer, force=False):
