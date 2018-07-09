@@ -1,12 +1,13 @@
 # simple-node-registry
-Simple node registry hosting and downloading scripts.
+Simple offline cache for helping with offline node installations.
 
 
+## Caching Files
+python downloader.py <cache_directory> -p <package.json>
+python downloader.py <cache_directory> <package@version> <package2@version> ...
 
-python downloader.py ./npm <package.json> -p
-python downloader.py ./npm package@version package2@version
 
-
-FLASK_APP=server.py flask run
+## Serving Cached Files
+python server.py <cache_directory>
 
 
