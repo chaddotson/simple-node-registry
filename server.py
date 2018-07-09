@@ -105,9 +105,7 @@ def get_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
-    #app.run(ssl_context='adhoc')
-
+def main():
     args = get_args()
     app.config['CACHE_DIRECTORY'] = args.cache_directory
     app.config['NODE_CACHE_DIRECTORY'] = join(args.cache_directory, 'node')
@@ -131,9 +129,15 @@ if __name__ == "__main__":
                     '--------------------------------------\n',
                     app.config['NODE_URL'],
                     app.config['CHROMEDRIVER_URL'])
-    
+
+    #app.run(ssl_context='adhoc')
     app.run(
         debug=args.verbose,
         host=args.host,
         port=args.port,
     )
+
+
+if __name__ == "__main__":
+    main()
+

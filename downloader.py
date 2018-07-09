@@ -358,6 +358,7 @@ def download_chromedriver(output_directory):
         with open(save_path, 'wb') as f:
             f.write(downloaded.content)
 
+
 def download_node_dependencies(output_directory_base, specified_packages):
     logger.info('Downloading node dependencies.')
 
@@ -520,7 +521,8 @@ def get_args():
 
     return parser.parse_args()
 
-if __name__ == '__main__':
+
+def main():
     basicConfig(level=INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
     args = get_args()
@@ -547,3 +549,6 @@ if __name__ == '__main__':
 
         download_node_dependencies(join(args.output_directory, 'node'), packages)
 
+
+if __name__ == '__main__':
+    main()
